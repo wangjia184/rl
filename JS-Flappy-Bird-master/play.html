@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>FlappyBird</title>
+    <link rel="stylesheet" href="style.css" > 
+    <link href="https://fonts.googleapis.com/css?family=Squada+One&display=swap" rel="stylesheet">
+    <style type="text/css">
+        #debug {
+            width: 600px;
+            display: block;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body onload="onPageLoaded()">
+    <canvas id="canvas" width="276" height="414"></canvas>
+    <script src="game.js"></script>
+    <pre id="debug"></pre>
+    <script>
+        function onPageLoaded() {
+            start();
+
+            setInterval( runOneStep, 2000);
+        }
+
+        function runOneStep() {
+            const state = step(false);
+            document.getElementById('debug').innerText = JSON.stringify( state, null, 4);
+        }
+        
+
+    </script>
+</body>
+</html>
