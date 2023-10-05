@@ -1,2 +1,4 @@
 chrome-mac-arm64/** filter=lfs diff=lfs merge=lfs -text
 chrome-win64/** filter=lfs diff=lfs merge=lfs -text
+–filename filter=lfs diff=lfs merge=lfs -text
+chrome-mac-arm64.zip filter=lfs diff=lfs merge=lfs -text
