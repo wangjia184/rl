@@ -1,3 +1,4 @@
 
 .DS_Store
-chrome-mac-arm64/
+Darwin-arm64/
+Windows-AMD64/

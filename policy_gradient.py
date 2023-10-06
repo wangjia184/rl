@@ -7,8 +7,10 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
 import pathlib
+import platform
 
 current_dir = pathlib.Path(__file__).parent.resolve()
+os_type = platform.system() + '-' + platform.machine()
 
 
 model = tf.keras.Sequential(
@@ -85,7 +87,9 @@ class agent():
 
 
 # run the game in chrome and collect data for training
-service = Service(executable_path='./chrome-mac-arm64/chromedriver')
+chromedriver_path = './{}/chromedriver'.format(os_type)
+print(chromedriver_path)
+service = Service(executable_path=chromedriver_path)
 driver = webdriver.Chrome(service=service)
 
 driver.get("file://" + str(current_dir /

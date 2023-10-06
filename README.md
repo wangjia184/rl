@@ -1,4 +1,6 @@
-https://googlechromelabs.github.io/chrome-for-testing/
+## Dependencies
+
+Install selenium binaries  https://googlechromelabs.github.io/chrome-for-testing/
 
 chrome	linux64	https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/117.0.5938.149/linux64/chrome-linux64.zip	200
 chrome	mac-arm64	https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/117.0.5938.149/mac-arm64/chrome-mac-arm64.zip	200
