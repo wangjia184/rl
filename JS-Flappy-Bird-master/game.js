@@ -392,13 +392,22 @@ function step(flap) {
       state_map.reward = -1;
     }
     else if( state_map.to_roof > 0 && state_map.to_floor > 0 && state_map.to_start < 0 && state_map.to_end > 0 ) { // in gap
-      state_map.reward = 0.5;
+      if( state_map.speed <= 0 ) { // falling
+        state_map.reward = 0.5;
+      } else { //rising
+        if( state_map.to_floor < pipe.gap / 2.0 ) {
+          state_map.reward = 0.5;
+        } else {
+          state_map.reward = 0.1;
+        }
+      }
+      
     }
     else { // other cases
       state_map.reward = 0.1;
     }
   } else {
-    state_map.reward = -10; // dead
+    state_map.reward = -15; // dead
   }
 
   
@@ -409,7 +418,7 @@ function step(flap) {
 
 function get_state() {
   const bird_sprite = bird.animations[0].sprite;
-  const radius = bird_sprite.height / 4 + bird_sprite.width / 4 + 2;
+  const radius = bird_sprite.height / 4 + bird_sprite.width / 4;
   const pipe_width = parseFloat(pipe.top.sprite.width);
 
   let next_pipe = null;
@@ -439,6 +448,8 @@ function get_state() {
     to_floor: Math.ceil(roof + pipe.gap - (bird.y + radius)),  // (bird.y + radius >= roof + gap) 
     to_start: parseFloat(next_pipe.x) - (bird.x + radius),  // (bird.x + radius >= pipe.x)
     to_end: parseFloat(next_pipe.x) + pipe_width - (bird.x + radius), // (bird.x + radius < pipe.x + pipe.w)
+    next_frame_to_roof: Math.floor(bird.y + bird.speed - radius - roof),
+    next_frame_to_floor: Math.ceil(roof + pipe.gap - (bird.y + bird.speed + radius)),
     rotation : bird.rotatation,
     speed: bird.speed,
     to_next_roof: Math.ceil(next_roof + pipe.gap - (bird.y + radius)),  // (bird.y + radius >= roof + gap) 
