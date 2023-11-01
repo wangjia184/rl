@@ -2,7 +2,7 @@
 from multiprocessing import Pool, Manager
 import queue
 import asyncio
-import os, pathlib, platform, random
+import os, pathlib, platform, time
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
@@ -25,15 +25,19 @@ def build_actor_model(trainable):
     return tf.keras.Sequential(
         [
             tf.keras.Input(type_spec=tf.RaggedTensorSpec(shape=[None, 8], dtype=tf.float32)),
-            tf.keras.layers.Dense( 512, activation='relu', kernel_regularizer=tf.keras.regularizers.l2(0.004), trainable=trainable),
+            tf.keras.layers.Dense( 512, activation='relu', trainable=trainable),
             tf.keras.layers.LayerNormalization(trainable=trainable),
-            tf.keras.layers.Dense( 1024, activation='relu', kernel_regularizer=tf.keras.regularizers.l2(0.004), trainable=trainable),
+            tf.keras.layers.Dense( 512, activation='relu', trainable=trainable),
             tf.keras.layers.LayerNormalization(trainable=trainable),
-            tf.keras.layers.Dense( 2048, activation='relu', kernel_regularizer=tf.keras.regularizers.l2(0.004), trainable=trainable),
+            tf.keras.layers.Dense( 1024, activation='relu', trainable=trainable),
             tf.keras.layers.LayerNormalization(trainable=trainable),
-            #tf.keras.layers.Dense( 1024, activation='relu', kernel_regularizer=tf.keras.regularizers.l2(0.004)),
-            #tf.keras.layers.LayerNormalization(),
-            tf.keras.layers.Dense(2, activation='softmax', kernel_regularizer=tf.keras.regularizers.l2(0.004), trainable=trainable)
+            tf.keras.layers.Dense( 1024, activation='relu', trainable=trainable),
+            tf.keras.layers.LayerNormalization(trainable=trainable),
+            tf.keras.layers.Dense( 2048, activation='relu', trainable=trainable),
+            tf.keras.layers.LayerNormalization(trainable=trainable),
+            tf.keras.layers.Dense( 2048, activation='relu', trainable=trainable),
+            tf.keras.layers.LayerNormalization(trainable=trainable),
+            tf.keras.layers.Dense(2, activation='softmax', trainable=trainable)
         ]
     )
 
@@ -41,15 +45,17 @@ def build_critic_model():
     return tf.keras.Sequential(
         [
             tf.keras.Input(type_spec=tf.RaggedTensorSpec(shape=[None, 8], dtype=tf.float32)),
-            tf.keras.layers.Dense(
-                256, activation='relu', kernel_regularizer=tf.keras.regularizers.l2(0.004)),
+            tf.keras.layers.Dense( 1024, activation='relu'),
             tf.keras.layers.LayerNormalization(),
-            tf.keras.layers.Dense(
-                512, activation='relu', kernel_regularizer=tf.keras.regularizers.l2(0.004)),
+            tf.keras.layers.Dense( 1024, activation='relu'),
             tf.keras.layers.LayerNormalization(),
-            tf.keras.layers.Dense( 1024, activation='relu', kernel_regularizer=tf.keras.regularizers.l2(0.004)),
+            tf.keras.layers.Dense( 1024, activation='relu'),
             tf.keras.layers.LayerNormalization(),
-            tf.keras.layers.Dense(1, activation=None, kernel_regularizer=tf.keras.regularizers.l2(0.004))
+            tf.keras.layers.Dense( 1024, activation='relu'),
+            tf.keras.layers.LayerNormalization(),
+            tf.keras.layers.Dense( 1024, activation='relu'),
+            tf.keras.layers.LayerNormalization(),
+            tf.keras.layers.Dense(1, activation=None)
         ]
     )
 
@@ -69,49 +75,55 @@ async def async_worker(id, c2p_queue, p2c_queue):
 
     driver.get("file://" + str(current_dir / "JS-Flappy-Bird-master" / "index.html"))
 
-    for episode in range(999999):
-        driver.execute_script(" start();")
+    try:
 
-        actions = []
-        rewards = []
-        states = []
-        log_probs = []
+        for episode in range(999999):
+            driver.execute_script(" start();")
 
-        total_rewards = 0
+            actions = []
+            rewards = []
+            states = []
+            log_probs = []
 
-        #r = random.randint(1, 20)  # skip random steps
-        #for _ in range(r):
-        #    state_dic = driver.execute_script("return step(0);")
+            total_rewards = 0
 
-        state_dic = driver.execute_script("return step(0);")
+            #r = random.randint(1, 20)  # skip random steps
+            #for _ in range(r):
+            #    state_dic = driver.execute_script("return step(0);")
 
-        running = state_dic['running']
-        state = [state_dic['to_gnd'], state_dic['to_roof'], state_dic['to_floor'], state_dic['to_start'], state_dic['next_frame_to_roof'], state_dic['next_frame_to_floor'], state_dic['speed'], state_dic['to_next_roof']]
-       
-        while running:
-            action, log_prob = choose_action(id, c2p_queue, p2c_queue, state)
-            actions.append(action)
-            states.append(state)
-            log_probs.append(log_prob)
+            state_dic = driver.execute_script("return step(0);")
 
-            flap = action > 0
-            state_dic = driver.execute_script( "return step({});".format("1" if flap else "0"))
             running = state_dic['running']
-            reward = state_dic['reward']
-
-            rewards.append(reward)
-            total_rewards += reward
-            new_state = [state_dic['to_gnd'], state_dic['to_roof'], state_dic['to_floor'], state_dic['to_start'],  state_dic['next_frame_to_roof'], state_dic['next_frame_to_floor'], state_dic['speed'], state_dic['to_next_roof']]
-            
-            state = new_state
-
-        send_trajectory( id, c2p_queue, states, rewards, actions, log_probs)
+            state = [state_dic['to_gnd'], state_dic['to_roof'], state_dic['to_floor'], state_dic['to_start'], state_dic['next_frame_to_roof'], state_dic['next_frame_to_floor'], state_dic['speed'], state_dic['to_next_roof']]
         
-        print("#{} Total rewards = {}".format(id, total_rewards))
- 
+            while running:
+                action, log_prob = choose_action(id, c2p_queue, p2c_queue, state)
+                actions.append(action)
+                states.append(state)
+                log_probs.append(log_prob)
 
+                flap = action > 0
+                state_dic = driver.execute_script( "return step({});".format("1" if flap else "0"))
+                running = state_dic['running']
+                reward = state_dic['reward']
+
+                rewards.append(reward)
+                total_rewards += reward
+                new_state = [state_dic['to_gnd'], state_dic['to_roof'], state_dic['to_floor'], state_dic['to_start'],  state_dic['next_frame_to_roof'], state_dic['next_frame_to_floor'], state_dic['speed'], state_dic['to_next_roof']]
+                
+                state = new_state
+
+            send_trajectory( id, c2p_queue, states, rewards, actions, log_probs)
+            
+            print("#{} Total rewards = {}".format(id, total_rewards))
+ 
+    except Exception:
+        driver.quit()
 
     driver.quit()
+
+
+    
 
 # call parent process to predict the action to take
 def choose_action(id, c2p_queue, p2c_queue, state):
@@ -144,13 +156,16 @@ def trainer(id, c2p_queue, p2c_queue):
     print('Run trainer (%s)...' % (os.getpid()))
     actor_model = build_actor_model(True)
     actor_model.summary()
-    actor_opt = tf.keras.optimizers.legacy.Adam(learning_rate=0.000005)
-    critic_opt = tf.keras.optimizers.legacy.Adam(learning_rate=0.00001)
+    actor_opt = tf.keras.optimizers.AdamW(learning_rate=0.000001)
+    critic_opt = tf.keras.optimizers.AdamW(learning_rate=0.000005)
     critic_model = build_critic_model()
     critic_model.summary()
 
-    actor_model.load_weights(str(current_dir) + "/checkpoints/ppo_discrete_actor/latest")
-    critic_model.load_weights(str(current_dir) + "/checkpoints/ppo_discrete_actor/latest")
+    try:
+        actor_model.load_weights(str(current_dir) + "/checkpoints/ppo_discrete_actor/latest")
+        critic_model.load_weights(str(current_dir) + "/checkpoints/ppo_discrete_critic/latest")
+    except Exception:
+        print("Failed to load actor_model or critic_model")
 
     count = 0
     while True:
@@ -201,7 +216,7 @@ def trainer(id, c2p_queue, p2c_queue):
         c2p_queue.put( { 'weights' : actor_model.get_weights() }, block=False)
 
         count += 1
-        if count % 100:
+        if count % 10:
             actor_model.save_weights(str(current_dir) + "/checkpoints/ppo_discrete_actor/latest", overwrite=True)
             critic_model.save_weights(str(current_dir) + "/checkpoints/ppo_discrete_critic/latest", overwrite=True)
                         
@@ -212,8 +227,10 @@ def trainer(id, c2p_queue, p2c_queue):
 if __name__=='__main__':
     surrogate_model = build_actor_model(False)
 
-
-    surrogate_model.load_weights(str(current_dir) + "/checkpoints/ppo_discrete_actor/latest")
+    try:
+        surrogate_model.load_weights(str(current_dir) + "/checkpoints/ppo_discrete_actor/latest")
+    except Exception:
+        print("Failed to load surrogate_model")
     
 
     with Manager() as manager:
@@ -229,7 +246,9 @@ if __name__=='__main__':
         p2t_queue = manager.Queue() # create a dedicated queue to send message to trainer
         p.apply_async(func=trainer, args=(id, c2p_queue, p2t_queue,), error_callback=print_error)
 
-        while True:
+        start_time = time.time()
+        while time.time() - start_time < 3600:
+
             states = []
             request_ids = []
             trajectories = []
@@ -283,7 +302,7 @@ if __name__=='__main__':
 
                 
         p.close()
-        p.join()
-        print('All subprocesses done.')
+        #p.join()
+        #print('All subprocesses done.')
 
 

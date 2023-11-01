@@ -392,14 +392,10 @@ function step(flap) {
       state_map.reward = -1;
     }
     else if( state_map.to_roof > 0 && state_map.to_floor > 0 && state_map.to_start < 0 && state_map.to_end > 0 ) { // in gap
-      if( state_map.speed <= 0 ) { // falling
+      if( state_map.to_roof < pipe.gap * 0.15 ) {
+        state_map.reward = -0.75;
+      } else {
         state_map.reward = 0.5;
-      } else { //rising
-        if( state_map.to_floor < pipe.gap / 2.0 ) {
-          state_map.reward = 0.5;
-        } else {
-          state_map.reward = 0.1;
-        }
       }
       
     }
