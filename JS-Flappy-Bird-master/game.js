@@ -46,6 +46,7 @@ scrn.onkeydown = function keyDown(e) {
 };
 
 let frames = 0;
+let last_flap_frame = -1;
 let dx = 2;
 let reward = 0;
 const state = {
@@ -188,6 +189,7 @@ const bird = {
     if (this.y > 0) {
       SFX.flap.play();
       this.speed = -this.thrust;
+      last_flap_frame = frames;
     }
   },
   setRotation: function () {
@@ -392,11 +394,20 @@ function step(flap) {
       state_map.reward = -1;
     }
     else if( state_map.to_roof > 0 && state_map.to_floor > 0 && state_map.to_start < 0 && state_map.to_end > 0 ) { // in gap
-      if( state_map.to_roof < pipe.gap * 0.15 ) {
-        state_map.reward = -0.75;
-      } else {
-        state_map.reward = 0.5;
+
+      if( (last_flap_frame+1) == frames &&
+          Math.abs(state_map.to_start) < state_map.to_end ) {  // flap on left part
+            state_map.reward = -1;
       }
+      else {
+        if( state_map.to_roof < pipe.gap * 0.15 ) {
+          state_map.reward = -0.75;
+        } else {
+          state_map.reward = 0.5;
+        }
+      }
+
+      
       
     }
     else { // other cases

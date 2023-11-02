@@ -164,6 +164,7 @@ def trainer(id, c2p_queue, p2c_queue):
     try:
         actor_model.load_weights(str(current_dir) + "/checkpoints/ppo_discrete_actor/latest")
         critic_model.load_weights(str(current_dir) + "/checkpoints/ppo_discrete_critic/latest")
+        tf.saved_model.save( actor_model, "./saved_model")
     except Exception:
         print("Failed to load actor_model or critic_model")
 
