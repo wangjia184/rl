@@ -393,11 +393,14 @@ function step(flap) {
     else if( state_map.to_roof < -100 ){ // too close to top
       state_map.reward = -1;
     }
+    else if( state_map.to_start >= 0 && state_map.to_start <= 10 && (last_flap_frame+1) == frames ) {
+        state_map.reward = -3;
+    }
     else if( state_map.to_roof > 0 && state_map.to_floor > 0 && state_map.to_start < 0 && state_map.to_end > 0 ) { // in gap
 
       if( (last_flap_frame+1) == frames &&
           Math.abs(state_map.to_start) < state_map.to_end ) {  // flap on left part
-            state_map.reward = -1;
+            state_map.reward = -3;
       }
       else {
         if( state_map.to_roof < pipe.gap * 0.15 ) {
@@ -406,9 +409,6 @@ function step(flap) {
           state_map.reward = 0.5;
         }
       }
-
-      
-      
     }
     else { // other cases
       state_map.reward = 0.1;
@@ -461,6 +461,7 @@ function get_state() {
     speed: bird.speed,
     to_next_roof: Math.ceil(next_roof + pipe.gap - (bird.y + radius)),  // (bird.y + radius >= roof + gap) 
     running: state.curr == state.Play,
+    score:  UI.score.curr
   };
 
 }

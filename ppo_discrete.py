@@ -13,7 +13,7 @@ import tensorflow_probability as tfp
 
 
 WORKER_NUMBER = 5
-GAMMA = 0.95
+GAMMA = 0.99
 PPO2_EPSILON = 0.2
 current_dir = pathlib.Path(__file__).parent.resolve()
 os_type = platform.system() + '-' + platform.machine()
@@ -96,7 +96,7 @@ async def async_worker(id, c2p_queue, p2c_queue):
             running = state_dic['running']
             state = [state_dic['to_gnd'], state_dic['to_roof'], state_dic['to_floor'], state_dic['to_start'], state_dic['next_frame_to_roof'], state_dic['next_frame_to_floor'], state_dic['speed'], state_dic['to_next_roof']]
         
-            while running:
+            while running and state_dic['score'] < 21:
                 action, log_prob = choose_action(id, c2p_queue, p2c_queue, state)
                 actions.append(action)
                 states.append(state)
@@ -114,6 +114,9 @@ async def async_worker(id, c2p_queue, p2c_queue):
                 state = new_state
 
             send_trajectory( id, c2p_queue, states, rewards, actions, log_probs)
+
+            while state_dic['running']:
+                state_dic = driver.execute_script("return step(0);")
             
             print("#{} Total rewards = {}".format(id, total_rewards))
  
@@ -179,6 +182,10 @@ def trainer(id, c2p_queue, p2c_queue):
                 sum_reward = r + GAMMA*sum_reward
                 discounted_rewards.append(sum_reward)
             discounted_rewards.reverse()
+            
+            discounted_rewards -= np.mean(discounted_rewards)
+            discounted_rewards /= np.std(discounted_rewards)
+
             discounted_rewards = np.vstack(discounted_rewards)
             states = np.vstack(states)
             with tf.GradientTape() as critic_tape:
