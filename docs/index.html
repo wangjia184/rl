@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>FlappyBird</title>
+    <link rel="stylesheet" href="style.css" >
+    <link href='http://fonts.font.im/css?family=Squada+One&display=swap' rel='stylesheet' type='text/css' />
+    <script src="jquery-3.7.1.min.js" ></script>
+</head>
+<body>
+
+    <div id="loading" style="position: fixed; left: 0; top: 0; bottom: 0; right: 0; background-color: white; ">
+        <div style="width: 100px; height: 100px; position: absolute; top: 50%; left: 50%; margin-top: -50px; margin-left: -50px; text-align: center; display: block;">
+            <span style="font-size: 48px; color: black; font-family: 'Squada One';" id="percentage">50%</span>
+            <span style="color: black; font-family: 'Squada One';">Loading ...</span>
+            
+        </div>
+    </div>
+
+    <canvas id="canvas" width="276" height="414"></canvas>
+    <div style="text-align: center;">
+        <label for="btnAI"><input type="radio" name="play-type" id="btnAI" checked="true"/>AI Plays</label>
+        <label for="btnHuman"><input type="radio" name="play-type" id="btnHuman"/>I want to play</label>
+    </div>
+    <script src="game.js?2"></script>
+
+
+    <script>
+ 
+        const worker = new Worker("./worker.js?" + (new Date()).toISOString());
+        let onPredicted = null;
+        worker.onmessage = async (evt) => {
+            const data = evt.data;
+            switch (data.type) {
+                case "ready": {
+                    $('#percentage').text('100%');
+                    $('#loading').fadeOut();
+                    ai_play();
+                    break;
+                }
+                case "progress": {
+                    $('#percentage').text( Math.ceil(data.progress * 100) + '%');
+                    //console.log("Loading percentage :" + data.progress * 100);
+                    //loadingPercentage = Math.floor(data.progress * 100);
+                    break;
+                }
+                case "error": {
+                    alert(data.message);
+                    self.location = self.location;
+                    break;
+                }
+                case "prediction": {
+                    if( typeof onPredicted === 'function'){
+                        onPredicted(data.flap);
+                        onPredicted = null;
+                    }
+                    break;
+                }
+                default: {
+                    console.log(data);
+                    break;
+                }
+            }
+        };
+
+        async function predict(stateMap) {
+
+            const promise = new Promise((resolve) => {
+                onPredicted = (flap) => { resolve(flap); };
+            });
+
+            const state = [[stateMap['to_gnd'], stateMap['to_roof'], stateMap['to_floor'], stateMap['to_start'], stateMap['next_frame_to_roof'], stateMap['next_frame_to_floor'], stateMap['speed'], stateMap['to_next_roof']]];
+            worker.postMessage(state);
+            return await promise;
+        }
+
+        async function ai_play() {
+            if( $('#btnAI').is(':checked') ){
+                start();
+
+                let stateMap = step(0);
+                while( stateMap['running'] && $('#btnAI').is(':checked') ) {
+                    const flap = await predict(stateMap);
+                    stateMap = step(flap ? 1 : 0);
+                }                   
+            }
+            setTimeout( ai_play, 3000);
+        }
+
+        function human_play() {
+            if( $('#btnHuman').is(':checked') ){
+                gameLoop();
+                setTimeout( human_play, 20);
+            }
+        }
+
+        $('#btnHuman').click( () => {
+            enableUserInput(true);
+            start();
+            human_play();
+        });
+        $('#btnAI').click( () => {
+            enableUserInput(false);
+            ai_play();
+        });
+    </script>
+</body>
+</html>

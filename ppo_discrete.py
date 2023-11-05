@@ -24,19 +24,27 @@ os_type = platform.system() + '-' + platform.machine()
 def build_actor_model(trainable):
     return tf.keras.Sequential(
         [
-            tf.keras.Input(type_spec=tf.RaggedTensorSpec(shape=[None, 8], dtype=tf.float32)),
-            tf.keras.layers.Dense( 512, activation='relu', trainable=trainable),
-            tf.keras.layers.LayerNormalization(trainable=trainable),
-            tf.keras.layers.Dense( 512, activation='relu', trainable=trainable),
-            tf.keras.layers.LayerNormalization(trainable=trainable),
+            tf.keras.Input(shape=(None,8)),
             tf.keras.layers.Dense( 1024, activation='relu', trainable=trainable),
-            tf.keras.layers.LayerNormalization(trainable=trainable),
+            #tf.keras.layers.LayerNormalization(trainable=trainable),
             tf.keras.layers.Dense( 1024, activation='relu', trainable=trainable),
-            tf.keras.layers.LayerNormalization(trainable=trainable),
-            tf.keras.layers.Dense( 2048, activation='relu', trainable=trainable),
-            tf.keras.layers.LayerNormalization(trainable=trainable),
-            tf.keras.layers.Dense( 2048, activation='relu', trainable=trainable),
-            tf.keras.layers.LayerNormalization(trainable=trainable),
+            #tf.keras.layers.LayerNormalization(trainable=trainable),
+            tf.keras.layers.Dense( 1024, activation='relu', trainable=trainable),
+            #tf.keras.layers.LayerNormalization(trainable=trainable),
+            tf.keras.layers.Dense( 1024, activation='relu', trainable=trainable),
+            #tf.keras.layers.LayerNormalization(trainable=trainable),
+            tf.keras.layers.Dense( 1024, activation='relu', trainable=trainable),
+            #tf.keras.layers.LayerNormalization(trainable=trainable),
+            tf.keras.layers.Dense( 1024, activation='relu', trainable=trainable),
+
+            tf.keras.layers.Dense( 1024, activation='relu', trainable=trainable),
+
+            tf.keras.layers.Dense( 1024, activation='relu', trainable=trainable),
+
+            tf.keras.layers.Dense( 1024, activation='relu', trainable=trainable),
+
+            tf.keras.layers.Dense( 1024, activation='relu', trainable=trainable),
+            #tf.keras.layers.LayerNormalization(trainable=trainable),
             tf.keras.layers.Dense(2, activation='softmax', trainable=trainable)
         ]
     )
@@ -73,7 +81,7 @@ async def async_worker(id, c2p_queue, p2c_queue):
     service = Service(executable_path=chromedriver_path)
     driver = webdriver.Chrome(service=service)
 
-    driver.get("file://" + str(current_dir / "JS-Flappy-Bird-master" / "index.html"))
+    driver.get("file://" + str(current_dir / "docs" / "train.html"))
 
     try:
 
@@ -96,7 +104,7 @@ async def async_worker(id, c2p_queue, p2c_queue):
             running = state_dic['running']
             state = [state_dic['to_gnd'], state_dic['to_roof'], state_dic['to_floor'], state_dic['to_start'], state_dic['next_frame_to_roof'], state_dic['next_frame_to_floor'], state_dic['speed'], state_dic['to_next_roof']]
         
-            while running and state_dic['score'] < 21:
+            while running and state_dic['score'] < 11:
                 action, log_prob = choose_action(id, c2p_queue, p2c_queue, state)
                 actions.append(action)
                 states.append(state)
@@ -167,7 +175,6 @@ def trainer(id, c2p_queue, p2c_queue):
     try:
         actor_model.load_weights(str(current_dir) + "/checkpoints/ppo_discrete_actor/latest")
         critic_model.load_weights(str(current_dir) + "/checkpoints/ppo_discrete_critic/latest")
-        tf.saved_model.save( actor_model, "./saved_model")
     except Exception:
         print("Failed to load actor_model or critic_model")
 
@@ -237,8 +244,11 @@ if __name__=='__main__':
 
     try:
         surrogate_model.load_weights(str(current_dir) + "/checkpoints/ppo_discrete_actor/latest")
+        
     except Exception:
         print("Failed to load surrogate_model")
+
+    tf.saved_model.save( surrogate_model, "./saved_model")
     
 
     with Manager() as manager:
