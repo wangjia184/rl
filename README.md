@@ -3,8 +3,7 @@
 Play it here : https://wangjia184.github.io/rl/
 
 
-FlappyBird is a famous game, I use the JS edition from https://github.com/aaarafat/JS-Flappy-Bird.
-I trained this model to play this game using PG/A2C/PPO algorithms.
+FlappyBird is a famous game, I forked the Javascript edition from https://github.com/aaarafat/JS-Flappy-Bird, and then trained a model to play it using PG/A2C/PPO algorithms.
 Have fun! try it in your web browser.
 
 ![Demo](https://user-images.githubusercontent.com/44725090/67148880-e7dba280-f2a4-11e9-8dbf-d154842ee0cf.gif)
