@@ -1,3 +1,12 @@
+## AI plays Flappy Bird
+
+Play it here : https://wangjia184.github.io/rl/
+
+
+FlappyBird is a famous game, I use the JS edition from https://github.com/aaarafat/JS-Flappy-Bird.
+I trained this model to play this game using PG/A2C/PPO algorithms.
+Have fun! try it in your web browser.
+
 ## Dependencies
 
 #Install selenium binaries  https://googlechromelabs.github.io/chrome-for-testing/
