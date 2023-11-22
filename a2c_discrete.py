@@ -14,29 +14,31 @@ current_dir = pathlib.Path(__file__).parent.resolve()
 os_type = platform.system() + '-' + platform.machine()
 
 
-actor_model = tf.keras.Sequential(
-    [
-        tf.keras.Input(type_spec=tf.RaggedTensorSpec(shape=[None, 6], dtype=tf.float32)),
-        tf.keras.layers.Dense(
-            512, activation='relu', kernel_regularizer=tf.keras.regularizers.l2(0.004)),
-        tf.keras.layers.LayerNormalization(),
-        tf.keras.layers.Dense(
-            1024, activation='relu', kernel_regularizer=tf.keras.regularizers.l2(0.004)),
-        tf.keras.layers.LayerNormalization(),
-        tf.keras.layers.Dense(
-            2048, activation='relu', kernel_regularizer=tf.keras.regularizers.l2(0.004)),
-        tf.keras.layers.LayerNormalization(),
-        #tf.keras.layers.Dense( 1024, activation='relu', kernel_regularizer=tf.keras.regularizers.l2(0.004)),
-        #tf.keras.layers.LayerNormalization(),
-        tf.keras.layers.Dense(2, activation='softmax', kernel_regularizer=tf.keras.regularizers.l2(0.004))
-    ]
-)
+def build_actor_model():
+    input = tf.keras.Input(shape=(None, 8), name="states")
+    x = tf.keras.layers.Dense( 512, activation='relu')(input)
+
+    
+    for _ in range(9):
+        #residual = x    
+        #x = tf.keras.layers.BatchNormalization(trainable=trainable)(x)
+        x = tf.keras.layers.Dense( 512, activation='relu')(x)
+        #x = tf.keras.layers.Dense( 256, trainable=trainable)(x)
+        #x = tf.keras.layers.Add()([residual, x])
+        #x = tf.keras.layers.ReLU()(x)
+        
+
+    output = tf.keras.layers.Dense(2, activation='softmax')(x)
+    return tf.keras.Model(input, output, name="actor")
+
+
+actor_model = build_actor_model()
 actor_model.summary()
 
 
 critic_model = tf.keras.Sequential(
     [
-        tf.keras.Input(type_spec=tf.RaggedTensorSpec(shape=[None, 6], dtype=tf.float32)),
+        tf.keras.Input(type_spec=tf.RaggedTensorSpec(shape=[None, 8], dtype=tf.float32)),
         tf.keras.layers.Dense(
             256, activation='relu', kernel_regularizer=tf.keras.regularizers.l2(0.004)),
         tf.keras.layers.LayerNormalization(),
@@ -51,8 +53,11 @@ critic_model = tf.keras.Sequential(
 critic_model.summary()
 
 
-actor_model.load_weights(str(current_dir) + "/checkpoints/a2c_discrete_actor")
-critic_model.load_weights(str(current_dir) + "/checkpoints/a2c_discrete_critic")
+try:
+    actor_model.load_weights(str(current_dir) + "/checkpoints/a2c_discrete_actor/latest")
+    critic_model.load_weights(str(current_dir) + "/checkpoints/a2c_discrete_critic/latest")
+except Exception:
+    print("Failed to load actor_model or critic_model")
 
 
 
@@ -109,7 +114,7 @@ print("Starting chromedriver at :" + chromedriver_path)
 service = Service(executable_path=chromedriver_path)
 driver = webdriver.Chrome(service=service)
 
-driver.get("file://" + str(current_dir / "JS-Flappy-Bird-master" / "index.html"))
+driver.get("file://" + str(current_dir / "docs" / "train.html"))
 
 my_agent = agent()
 
@@ -123,27 +128,23 @@ for episode in range(2000):
     max_frames = 1
     total_rewards = 0
 
-    r = random.randint(1, 20)
-    for _ in range(r):
-        state_dic = driver.execute_script("return step(0);")
+    state_dic = driver.execute_script("return step(0);")
 
     running = state_dic['running']
-    state = [state_dic['to_gnd'], state_dic['to_roof'], state_dic['to_floor'], state_dic['to_start'], state_dic['speed'], state_dic['to_next_roof']]
+    state = [state_dic['to_gnd'], state_dic['to_roof'], state_dic['to_floor'], state_dic['to_start'], state_dic['next_frame_to_roof'], state_dic['next_frame_to_floor'], state_dic['speed'], state_dic['to_next_roof']]
     while running:
         action = my_agent.act(state)
 
-        reward = 0
-        for step in range(max_frames):
-            if running:
-                flap = action > 0 and step == 0
-                state_dic = driver.execute_script(
-                    "return step({});".format("1" if flap else "0"))
-                running = state_dic['running']
-                reward += state_dic['reward']
+
+        flap = action > 0
+        state_dic = driver.execute_script("return step({});".format("1" if flap else "0"))
+        running = state_dic['running']
+        reward = state_dic['reward']
+                
 
         rewards.append(reward)
         total_rewards += reward
-        new_state = [state_dic['to_gnd'], state_dic['to_roof'], state_dic['to_floor'], state_dic['to_start'],  state_dic['speed'], state_dic['to_next_roof']]
+        new_state = [state_dic['to_gnd'], state_dic['to_roof'], state_dic['to_floor'], state_dic['to_start'], state_dic['next_frame_to_roof'], state_dic['next_frame_to_floor'], state_dic['speed'], state_dic['to_next_roof']]
         
        
         my_agent.train( state, new_state, reward)
@@ -154,6 +155,6 @@ for episode in range(2000):
     print("{} Total rewards = {}".format(episode, total_rewards))
     print("--------------------------")
 
-actor_model.save_weights(str(current_dir) + "/checkpoints/a2c_discrete_actor", overwrite=True)
-critic_model.save_weights(str(current_dir) + "/checkpoints/a2c_discrete_critic", overwrite=True)
+actor_model.save_weights(str(current_dir) + "/checkpoints/a2c_discrete_actor/latest", overwrite=True)
+critic_model.save_weights(str(current_dir) + "/checkpoints/a2c_discrete_critic/latest", overwrite=True)
 driver.quit()

@@ -15,6 +15,7 @@ import tensorflow_probability as tfp
 WORKER_NUMBER = 5
 GAMMA = 0.99
 PPO2_EPSILON = 0.2
+LEARNING_RATE = 0.00001
 current_dir = pathlib.Path(__file__).parent.resolve()
 os_type = platform.system() + '-' + platform.machine()
 
@@ -22,32 +23,25 @@ os_type = platform.system() + '-' + platform.machine()
 
 # Build actor model, we need two actor models,  one for prediction by workers; the other for training
 def build_actor_model(trainable):
-    return tf.keras.Sequential(
-        [
-            tf.keras.Input(shape=(None,8)),
-            tf.keras.layers.Dense( 1024, activation='relu', trainable=trainable),
-            #tf.keras.layers.LayerNormalization(trainable=trainable),
-            tf.keras.layers.Dense( 1024, activation='relu', trainable=trainable),
-            #tf.keras.layers.LayerNormalization(trainable=trainable),
-            tf.keras.layers.Dense( 1024, activation='relu', trainable=trainable),
-            #tf.keras.layers.LayerNormalization(trainable=trainable),
-            tf.keras.layers.Dense( 1024, activation='relu', trainable=trainable),
-            #tf.keras.layers.LayerNormalization(trainable=trainable),
-            tf.keras.layers.Dense( 1024, activation='relu', trainable=trainable),
-            #tf.keras.layers.LayerNormalization(trainable=trainable),
-            tf.keras.layers.Dense( 1024, activation='relu', trainable=trainable),
+    input = tf.keras.Input(shape=(None, 8), name="states")
+    x = tf.keras.layers.Dense( 1024, activation='relu', trainable=trainable)(input)
 
-            tf.keras.layers.Dense( 1024, activation='relu', trainable=trainable),
+    
+    for _ in range(9):
+        #residual = x    
+        #x = tf.keras.layers.Reshape((1, 512))(x) 
+        #x = tf.keras.layers.GroupNormalization(trainable=trainable)(x)
+        #x = tf.keras.layers.Reshape((512,))(x) 
+        x = tf.keras.layers.Dense( 1024, activation='relu', trainable=trainable)(x)
+        #x = tf.keras.layers.Dense( 256, trainable=trainable)(x)
+        #x = tf.keras.layers.Add()([residual, x])
+        #x = tf.keras.layers.ReLU()(x)
+        
 
-            tf.keras.layers.Dense( 1024, activation='relu', trainable=trainable),
+    output = tf.keras.layers.Dense(2, activation='softmax', trainable=trainable)(x)
+    return tf.keras.Model(input, output, name="actor")
 
-            tf.keras.layers.Dense( 1024, activation='relu', trainable=trainable),
 
-            tf.keras.layers.Dense( 1024, activation='relu', trainable=trainable),
-            #tf.keras.layers.LayerNormalization(trainable=trainable),
-            tf.keras.layers.Dense(2, activation='softmax', trainable=trainable)
-        ]
-    )
 
 def build_critic_model():
     return tf.keras.Sequential(
@@ -104,7 +98,7 @@ async def async_worker(id, c2p_queue, p2c_queue):
             running = state_dic['running']
             state = [state_dic['to_gnd'], state_dic['to_roof'], state_dic['to_floor'], state_dic['to_start'], state_dic['next_frame_to_roof'], state_dic['next_frame_to_floor'], state_dic['speed'], state_dic['to_next_roof']]
         
-            while running and state_dic['score'] < 11:
+            while running and state_dic['score'] < 3:
                 action, log_prob = choose_action(id, c2p_queue, p2c_queue, state)
                 actions.append(action)
                 states.append(state)
@@ -167,8 +161,8 @@ def trainer(id, c2p_queue, p2c_queue):
     print('Run trainer (%s)...' % (os.getpid()))
     actor_model = build_actor_model(True)
     actor_model.summary()
-    actor_opt = tf.keras.optimizers.AdamW(learning_rate=0.000001)
-    critic_opt = tf.keras.optimizers.AdamW(learning_rate=0.000005)
+    actor_opt = tf.keras.optimizers.AdamW(learning_rate=LEARNING_RATE)
+    critic_opt = tf.keras.optimizers.AdamW(learning_rate=LEARNING_RATE*5)
     critic_model = build_critic_model()
     critic_model.summary()
 
